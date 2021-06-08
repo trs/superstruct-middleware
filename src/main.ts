@@ -26,6 +26,8 @@ export const superstructMiddleware = <T = unknown, S = unknown>(prop: keyof Requ
   };
 }
 
+export default superstructMiddleware;
+
 export type RequestStructDefinition<T, S> =
   | {body: Struct<T, S>}
   | {params: Struct<T, S>}
