@@ -12,15 +12,15 @@ describe('superstructMiddleware', () => {
   });
 
   describe('validation', () => {
-    beforeEach(() => {
-      const handleValidationError: ErrorRequestHandler = (_err, _req, res, _next) => res.send(501);
-      const handleSuccess: RequestHandler = (_req, res, _next) => res.send(200);
+    const handleValidationError: ErrorRequestHandler = jest.fn((_err, _req, res, _next) => res.send(501));
+    const handleSuccess: RequestHandler = jest.fn((_req, res, _next) => res.send(200));
 
+    beforeEach(() => {
       app.post(
         '/',
         superstructMiddleware('body', superstruct.object({
           id: superstruct.string(),
-          value: superstruct.number(),
+          value: superstruct.coerce(superstruct.number(), superstruct.string(), (val) => Number(val)),
           comment: superstruct.optional(superstruct.string()),
           other: superstruct.defaulted(superstruct.boolean(), false)
         })),
@@ -39,12 +39,22 @@ describe('superstructMiddleware', () => {
         .expect(200);
     });
 
+    test('coerce', async () => {
+      await supertest(app)
+        .post('/')
+        .send({
+          id: 'abc',
+          value: 4
+        })
+        .expect(200);
+    });
+
     test('incorrect', async () => {
       await supertest(app)
         .post('/')
         .send({
           id: 'abc',
-          value: '4'
+          value: 'nope'
         })
         .expect(501);
     });
