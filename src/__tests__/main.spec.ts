@@ -13,18 +13,17 @@ describe('superstructMiddleware', () => {
 
   describe('validation', () => {
     beforeEach(() => {
-      const handleValidationError: ErrorRequestHandler = (err, req, res, next) => res.send(501);
-      const handleSuccess: RequestHandler = (req, res, next) => res.send(200);
+      const handleValidationError: ErrorRequestHandler = (_err, _req, res, _next) => res.send(501);
+      const handleSuccess: RequestHandler = (_req, res, _next) => res.send(200);
 
       app.post(
         '/',
-        superstructMiddleware({
-          body: superstruct.object({
-            id: superstruct.string(),
-            value: superstruct.number(),
-            comment: superstruct.optional(superstruct.string())
-          })
-        }),
+        superstructMiddleware('body', superstruct.object({
+          id: superstruct.string(),
+          value: superstruct.number(),
+          comment: superstruct.optional(superstruct.string()),
+          other: superstruct.defaulted(superstruct.boolean(), false)
+        })),
         handleValidationError,
         handleSuccess
       );
