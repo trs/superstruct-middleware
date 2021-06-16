@@ -1,8 +1,8 @@
 import supertest from 'supertest';
-import express, { ErrorRequestHandler, RequestHandler } from 'express';
+import express from 'express';
 import * as superstruct from 'superstruct';
 
-import {superstructMiddleware} from '../main';
+import { validateRequest, catchValidationError } from '../main';
 
 describe('superstructMiddleware', () => {
   let app: express.Express;
@@ -11,25 +11,30 @@ describe('superstructMiddleware', () => {
     app.use(express.json());
   });
 
-  describe('validation', () => {
-    const handleValidationError: ErrorRequestHandler = jest.fn((_err, _req, res, _next) => res.send(501));
-    const handleSuccess: RequestHandler = jest.fn((_req, res, _next) => res.send(200));
+  describe('validateRequest (key)', () => {
+    const handleValidationError = jest.fn((_err, _req, res, _next) => res.sendStatus(501));
+    const handleSuccess = jest.fn((_req, res, _next) => res.sendStatus(200));
 
     beforeEach(() => {
       app.post(
         '/',
-        superstructMiddleware('body', superstruct.object({
+        validateRequest('body', superstruct.object({
           id: superstruct.string(),
           value: superstruct.coerce(superstruct.number(), superstruct.string(), (val) => Number(val)),
           comment: superstruct.optional(superstruct.string()),
           other: superstruct.defaulted(superstruct.boolean(), false)
         })),
-        handleValidationError,
+        catchValidationError(handleValidationError),
         handleSuccess
       );
     });
 
-    test('correct', async () => {
+    afterEach(() => {
+      handleValidationError.mockClear();
+      handleSuccess.mockClear();
+    });
+
+    test('passes validation', async () => {
       await supertest(app)
         .post('/')
         .send({
@@ -37,19 +42,25 @@ describe('superstructMiddleware', () => {
           value: 4
         })
         .expect(200);
+
+      expect(handleValidationError).not.toBeCalled();
+      expect(handleSuccess).toBeCalled();
     });
 
-    test('coerce', async () => {
+    test('coerces values to match type', async () => {
       await supertest(app)
         .post('/')
         .send({
           id: 'abc',
-          value: 4
+          value: '4'
         })
         .expect(200);
+
+      expect(handleValidationError).not.toBeCalled();
+      expect(handleSuccess).toBeCalled();
     });
 
-    test('incorrect', async () => {
+    test('fails validation', async () => {
       await supertest(app)
         .post('/')
         .send({
@@ -57,6 +68,72 @@ describe('superstructMiddleware', () => {
           value: 'nope'
         })
         .expect(501);
+
+      expect(handleValidationError).toBeCalled();
+      expect(handleSuccess).not.toBeCalled();
+    });
+  });
+
+  describe('validateRequest (function)', () => {
+    const handleValidationError = jest.fn((_err, _req, res, _next) => res.send(501));
+    const handleSuccess = jest.fn((_req, res, _next) => res.send(200));
+
+    beforeEach(() => {
+      app.post(
+        '/',
+        validateRequest((req) => req.body, superstruct.object({
+          id: superstruct.string(),
+          value: superstruct.coerce(superstruct.number(), superstruct.string(), (val) => Number(val)),
+          comment: superstruct.optional(superstruct.string()),
+          other: superstruct.defaulted(superstruct.boolean(), false)
+        })),
+        catchValidationError(handleValidationError),
+        handleSuccess
+      );
+    });
+
+    afterEach(() => {
+      handleValidationError.mockClear();
+      handleSuccess.mockClear();
+    });
+
+    test('passes validation', async () => {
+      await supertest(app)
+        .post('/')
+        .send({
+          id: 'abc',
+          value: 4
+        })
+        .expect(200);
+
+      expect(handleValidationError).not.toBeCalled();
+      expect(handleSuccess).toBeCalled();
+    });
+
+    test('coerces values to match type', async () => {
+      await supertest(app)
+        .post('/')
+        .send({
+          id: 'abc',
+          value: '4'
+        })
+        .expect(200);
+
+      expect(handleValidationError).not.toBeCalled();
+      expect(handleSuccess).toBeCalled();
+    });
+
+    test('fails validation', async () => {
+      await supertest(app)
+        .post('/')
+        .send({
+          id: 'abc',
+          value: 'nope'
+        })
+        .expect(501);
+
+      expect(handleValidationError).toBeCalled();
+      expect(handleSuccess).not.toBeCalled();
     });
   });
 });

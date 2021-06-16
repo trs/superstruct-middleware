@@ -19,22 +19,40 @@ yarn add superstruct-middleware superstruct
 ```ts
 import express from "express";
 import { number, object } from "superstruct";
-import validate from "superstruct-middleware";
+import { validateRequest, catchValidationError } from "superstruct-middleware";
 
 const app = express();
 
 app.post(
-  "api",
-  validate(
+  "/api/endpoint",
+  validateRequest(
     "body",
     object({
       id: number(),
     }),
   ),
-  (err, req, res, next) => {
+  catchValidationError((structError, req, res, next) => {
     // handle validation error
     res.send(500);
+  }),
+  (req, res, next) => {
+    // handle route
+    res.send(200);
   },
+);
+
+app.get(
+  "/api/other",
+  validateRequest(
+    (req, res) => req.params,
+    object({
+      id: coerce(number(), string(), (val) => Number(val)),
+    }),
+  ),
+  catchValidationError((structError, req, res, next) => {
+    // handle validation error
+    res.send(500);
+  }),
   (req, res, next) => {
     // handle route
     res.send(200);
@@ -43,3 +61,19 @@ app.post(
 
 app.listen();
 ```
+
+## API
+
+### `validateRequest`
+
+> Create an express handler to validate the request using a superstruct structure.
+
+First argument takes either a property of the request object to validate, or a function taking the request and response objects and returning a value to validate.
+
+Second argument is the superstruct structure type.
+
+### `catchValidationError`
+
+> Create an express handler to catch and handle superstruct validation errors.
+
+First argument is the struct error from the validate function. The remaining arguments are the same as any other express request handler.
