@@ -1,7 +1,7 @@
 import { validate, StructError } from 'superstruct';
 import buildDebug from 'debug';
 
-import type { RequestHandler, ErrorRequestHandler, Request, Response } from 'express';
+import type { RequestHandler, ErrorRequestHandler, Request } from 'express';
 import type { Struct } from 'superstruct';
 
 const debug = buildDebug('superstruct-middleware');
