@@ -25,6 +25,23 @@ const app = express();
 
 app.post(
   "/api/endpoint",
+  validateRequest({
+    body: object({
+      id: number(),
+    })
+  }),
+  catchValidationError((structError, req, res, next) => {
+    // handle validation error
+    res.send(500);
+  }),
+  (req, res, next) => {
+    // handle route
+    res.send(200);
+  },
+);
+
+app.post(
+  "/api/endpoint",
   validateRequest(
     "body",
     object({
