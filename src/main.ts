@@ -19,7 +19,7 @@ const debug = buildDebug('superstruct-middleware');
  *   })
  * });
  */
-export function validateRequest(prop: ValidationProps): RequestHandler;
+export function validateRequest<T, S>(prop: ValidationProps<T, S>, options?: ValidateOptions): RequestHandler;
 /**
  * Create a superstruct validation express middleware handler.
  * @param prop Name of Request prop.
@@ -30,20 +30,24 @@ export function validateRequest(prop: ValidationProps): RequestHandler;
  *   id: string()
  * }));
  */
-export function validateRequest<T, S>(prop: keyof Request, struct: Struct<T, S>): RequestHandler;
-export function validateRequest<T, S>(prop: keyof Request | ValidationProps, struct?: Struct<T, S>): RequestHandler {
+export function validateRequest<T, S>(prop: keyof Request, struct: Struct<T, S>, options?: ValidateOptions): RequestHandler;
+export function validateRequest<T, S>(prop: keyof Request | ValidationProps<T, S>, struct?: Struct<T, S> | ValidateOptions, options?: ValidateOptions): RequestHandler {
   let validators: Array<(req: Request) => void> = [];
   if (typeof prop === 'object') {
-    validators = buildAllValidators(prop);
+    options = struct as ValidateOptions;
+    validators = Object.entries(prop)
+      .map(([key, struct]) => buildValidator(key as keyof Request, struct, options));
   } else if (typeof prop === 'string' && typeof struct !== 'undefined') {
-    validators = [buildValidator(prop, struct)];
+    validators = [
+      buildValidator(prop, struct as Struct<T, S>, options)
+    ];
   }
 
   if (!validators.length) {
     throw new Error('Invalid validation middleware props');
   }
 
-  return (req, res, next) => {
+  return (req, _res, next) => {
     for (const validator of validators) {
       validator(req);
     }
@@ -65,30 +69,44 @@ export const catchValidationError: ValidationErrorRequestHandler = (handler) => 
 
 /// Internal Utils
 
-function buildValidator<T, S>(prop: keyof Request, struct: Struct<T, S>) {
+function buildValidator<T, S>(prop: keyof Request, struct: Struct<T, S>, options: ValidateOptions = {coerce: true, mask: false}) {
   return (req: Request) => {
     const data = req[prop];
 
-    const [error, value] = validate(data, struct, {coerce: true});
+    const [error, value] = validate(data, struct, options);
     if (error) {
       debug(`Validation error on key (${error.key}) in request`);
 
       throw error;
     }
 
+    // Store a copy of the existing object for reference
     (req as any)[`_${String(prop)}`] = data;
+
+    // Overwrite the existing object with the validated object
+    // This is so any defaults or coercion can be applied
     (req as any)[`${String(prop)}`] = value;
   }
 }
 
-function buildAllValidators(prop: ValidationProps) {
-  return Object.entries(prop)
-    .map(([key, struct]) => buildValidator(key as keyof Request, struct));
-}
-
 /// Types
 
-export type ValidationProps = Record<keyof Request, Struct>;
+export interface ValidateOptions {
+  coerce?: boolean;
+  mask?: boolean;
+};
+
+export type ValidationProps<T, S> =
+  | {body: Struct<T, S>}
+  | {query: Struct<T, S>}
+  | {params: Struct<T, S>}
+  | {cookies: Struct<T, S>}
+  | {signedCookies: Struct<T, S>}
+  | {protocol: Struct<T, S>}
+  | {secure: Struct<T, S>}
+  | {fresh: Struct<T, S>}
+  | {stale: Struct<T, S>}
+  | {xhr: Struct<T, S>}
 
 export interface ValidationErrorRequestHandler extends ErrorRequestHandler {
   (handler: (err: StructError, ...args: Parameters<RequestHandler>) => void): ErrorRequestHandler
