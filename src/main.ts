@@ -63,7 +63,7 @@ export function validateRequest<T, S>(prop: keyof Request | ValidationProps<T, S
  * @returns `ErrorRequestHandler`
  */
 export const catchValidationError: ValidationErrorRequestHandler = (handler) => (error, req, res, next) => {
-  if (error instanceof StructError) return handler(error, res, res, next);
+  if (error instanceof StructError) return handler(error, req, res, next);
   else throw error;
 }
 
