@@ -86,3 +86,7 @@ app.listen();
 > Create an express handler to catch and handle superstruct validation errors.
 
 `handler`: An express error handler function. First argument is the struct error from the validate function. The remaining arguments are the same as any other express request handler.
+
+## Publishing
+
+To publish a new version, create a commit with a new version inside `package.json` and push to Github. That version will automatically be published using Github workflows.
