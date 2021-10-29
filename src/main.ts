@@ -10,8 +10,8 @@ const debug = buildDebug('superstruct-middleware');
 
 /**
  * Create a superstruct validation express middleware handler.
- * @param prop Record where each key is a Request prop and the value is a superstruct struct type.
- * @returns `RequestHandler`
+ * @param {ValidationProps} prop Record where each key is a Request prop and the value is a superstruct struct type.
+ * @returns {RequestHandler}
  * @example
  * validateRequest({
  *   body: object({
@@ -22,9 +22,9 @@ const debug = buildDebug('superstruct-middleware');
 export function validateRequest<T, S>(prop: ValidationProps<T, S>, options?: ValidateOptions): RequestHandler;
 /**
  * Create a superstruct validation express middleware handler.
- * @param prop Name of Request prop.
- * @param struct Superstruct struct type.
- * @returns `RequestHandler`
+ * @param {string} prop Name of Request prop.
+ * @param {Struct} struct Superstruct struct type.
+ * @returns {RequestHandler}
  * @example
  * validateRequest('body', object({
  *   id: string()
@@ -59,13 +59,29 @@ export function validateRequest<T, S>(prop: keyof Request | ValidationProps<T, S
  * Create an express error middleware that only handles a superstruct StructError.
  *
  * This is useful for handling validation errors, but ignoring any other express errors that may come down in the chain.
- * @param handler Function taking the same arguments as `ErrorRequestHandler`
- * @returns `ErrorRequestHandler`
+ * @param {ErrorRequestHandler} handler Function taking the same arguments as `ErrorRequestHandler`
+ * @returns {ErrorRequestHandler}
  */
 export const catchValidationError: ValidationErrorRequestHandler = (handler) => (error, req, res, next) => {
   if (error instanceof StructError) return handler(error, req, res, next);
   else throw error;
 }
+
+/**
+ * Helper function for typing a request handler since sometimes Typescript can't infer types on handler functions.
+ * @param {RequestHandler} handler Express
+ * @returns {RequestHandler}
+ */
+export const handleRequest = (handler: RequestHandler) => handler;
+
+/**
+ * Helper function for typing an error request handler since sometimes Typescript can't infer types on handler functions.
+ *
+ * If handling the superstruct validation error, use `catchValidationError` instead.
+ * @param {ErrorRequestHandler} handler
+ * @returns {ErrorRequestHandler}
+ */
+export const handleError = (handler: ErrorRequestHandler) => handler;
 
 /// Internal Utils
 
