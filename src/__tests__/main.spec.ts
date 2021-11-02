@@ -1,8 +1,8 @@
 import supertest from 'supertest';
-import express from 'express';
+import express, {RequestHandler, ErrorRequestHandler} from 'express';
 import * as superstruct from 'superstruct';
 
-import { validateRequest, catchValidationError } from '../main';
+import { validateRequest, catchValidationError, handleRequest } from '../main';
 
 describe('superstructMiddleware', () => {
   let app: express.Express;
@@ -21,17 +21,17 @@ describe('superstructMiddleware', () => {
   describe.each([
     [validateRequest('body', struct)],
     [validateRequest({ body: struct })]
-  ])('validateRequest', (handler) => {
-    const handleValidationError = jest.fn((_err, _req, res, _next) => res.sendStatus(400));
-    const handleSuccess = jest.fn((_req, res, _next) => res.sendStatus(200));
-    const handleGlobalError = jest.fn((_req, res, _next) => res.sendStatus(500));
+  ])('validateRequest', (validator) => {
+    const handleValidationError = jest.fn<void, Parameters<ErrorRequestHandler>>((_err, _req, res, _next) => res.sendStatus(400));
+    const handleSuccess = jest.fn<void, Parameters<RequestHandler>>((_req, res, _next) => res.sendStatus(200));
+    const handleGlobalError = jest.fn<void, Parameters<ErrorRequestHandler>>((_err, _req, res, _next) => res.sendStatus(500));
 
     beforeEach(() => {
       app.post(
         '/',
-        handler,
+        validator,
         catchValidationError(handleValidationError),
-        handleSuccess,
+        handleRequest(handleSuccess),
         handleGlobalError
       );
     });
